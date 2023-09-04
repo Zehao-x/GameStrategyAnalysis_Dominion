@@ -1,0 +1,4457 @@
+---
+title: "Analyze Dominion with action cards"
+output: html_document
+---
+
+Original Function 
+```{r}
+buy_greedy = function(hand){
+  if(sum(unlist(hand)) >= 8){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+  }else if(sum(unlist(hand)) >= 6){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+  }else if(sum(unlist(hand)) >= 3){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+  }else{
+    buy_card = numeric(0)
+    p = 0
+  }
+  return(list(buy_card=buy_card, points=p))
+}
+
+buy_bigmoney = function(hand1){
+  if(sum(unlist(hand1)) >= 8){
+    buy_card1 = 0
+    number_Province <<- number_Province - 1
+    p = 6
+  }else if(sum(unlist(hand1)) >= 6){
+    buy_card1 = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+  }else if(sum(unlist(hand1)) >= 3){
+    buy_card1 = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+  }else{
+    buy_card1 = 1
+    number_Copper <<- number_Copper -1
+    p = 0
+  }
+  return(list(buy_card=buy_card1, points=p))
+}
+
+buy_waitgold = function(hand,all_cards){
+  if(sum(unlist(hand)) >= 8 & sum(unlist(all_cards == 3)) >= 4){
+    buy_card = 0 
+    number_Province <<- number_Province - 1
+    p = p+6
+  }else if(sum(unlist(hand)) >= 6 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+  }else if(sum(unlist(hand)) >= 3){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+  }else{
+    buy_card = 0
+    p = 0
+  }
+  return(list(buy_card=buy_card, points=p))
+}
+```
+
+R2.1
+Smithy
+"buy-greedy with smithy"-1 player setting
+```{r}
+#setting
+getcarda = function(deck,number = 5){
+  hand = deck[1:min(number,length(deck))]
+  return(hand)
+}
+getcardb = function(deck,number = 5){
+  left = deck[-c(1:min(number,length(deck)))]
+  return(left)
+}
+
+#played_card = array()
+#action phase
+#action = function(hand){
+#  if(min(hand == -1)){
+#    played_card = -1
+#    hand = getcarda(deck, number=3)
+#    deck = getcardb(deck)
+#  }else{
+#    
+#  }
+#  return(played_card)
+#}
+
+
+#buy phase
+buy_greedy_smithy = function(hand,buy_smithy){
+  if(sum(hand[which(hand >= 0)]) >= 8){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Smithy > 0 && buy_smithy ){
+    number_Smithy <<- number_Smithy -1
+    p = 0
+    buy_card = -1
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = numeric(0)
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+
+#end turn
+reshuffle = function(discard){
+  deck = sample(discard)
+  return(deck)
+}
+
+store = numeric(0)
+for (runtimes in 1: 1000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  deck = sample(deck)
+  discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  p = 3
+  
+  
+  while(number_Province>0){
+    i = i+1
+    
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    #action stage
+    #print(hand)
+    #print(discard)
+    #print(deck)
+    #print(",")
+    if(min(hand) == -1){
+      played_card = -1
+      hand = hand[-which.min(hand)]
+      if(length(deck)>=3) {
+        hand = c(hand, getcarda(deck, number=3))
+        deck = getcardb(deck,number = 3)
+      }else{
+        hand1 = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand3 = getcarda(deck,number=3-length(hand1))
+        deck = getcardb(deck,number=3-length(hand1))
+        hand=c(hand,hand1,hand3)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck,discard,hand,played_card) == -1)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_smithy = (Smithy_total * 5) < cards_total
+    buy_card = buy_greedy_smithy(hand,buy_smithy)
+    buy_card2= buy_card$buy_card
+    discard = c(discard,hand,buy_card2,played_card)
+  }
+  store <- c(store,i)
+}
+min_rounds = min(store)
+min_rounds
+
+hist(store, main = "the frequency of different rounds in 10000 times in 'greedy with smithy' strategy", xlab = "possible minimum rounds")
+plot(store,xlab = "frequency in 10000 times ", ylab = "possible rounds")
+```
+
+
+R2.2
+"buy_big money with smithy" 1-player setting
+```{r}
+#setting
+getcarda = function(deck,number = 5){
+  hand = deck[1:min(number,length(deck))]
+  return(hand)
+}
+getcardb = function(deck,number = 5){
+  left = deck[-c(1:min(number,length(deck)))]
+  return(left)
+}
+
+#played_card = array()
+#action phase
+#action = function(hand){
+#  if(min(hand == -1)){
+#    played_card = -1
+#    hand = getcarda(deck, number=3)
+#    deck = getcardb(deck)
+#  }else{
+#    
+#  }
+#  return(played_card)
+#}
+
+
+#buy phase
+buy_bigmoney_smithy = function(hand,buy_smithy){
+  if(sum(hand[which(hand >= 0)]) >= 8){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Smithy > 0 && buy_smithy ){
+    number_Smithy <<- number_Smithy -1
+    p = 0
+    buy_card = -1
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = 1
+    number_Copper <<- number_Copper -1
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+
+#end turn
+reshuffle = function(discard){
+  deck = sample(discard)
+  return(deck)
+}
+
+store = numeric(0)
+for (runtimes in 1: 1000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  deck = sample(deck)
+  discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  p = 3
+  
+  
+  while(number_Province>0){
+    i = i+1
+    
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    #action stage
+    if(min(hand) == -1){
+      played_card = -1
+      hand = hand[-which.min(hand)]
+      if(length(deck)>=3) {
+        hand = c(hand, getcarda(deck, number=3))
+        deck = getcardb(deck,number = 3)
+      }else{
+        hand1 = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand3 = getcarda(deck,number=3-length(hand1))
+        deck = getcardb(deck,number=3-length(hand1))
+        hand=c(hand,hand1,hand3)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck,discard,hand,played_card) == -1)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_smithy = (Smithy_total * 5) < cards_total
+    buy_card = buy_bigmoney_smithy(hand,buy_smithy)
+    buy_card2= buy_card$buy_card
+    discard = c(discard,hand,buy_card2,played_card)
+  }
+  store <- c(store,i)
+}
+min_rounds = min(store)
+min_rounds
+
+hist(store, main = "the frequency of different rounds in 10000 times in 'bigmoney with smithy' strategy", xlab = "possible minimum rounds")
+plot(store,xlab = "frequency in 10000 times ", ylab = "possible rounds")
+```
+
+R2.3
+buy_WaitForGold with smithy strategy
+```{r}
+#setting
+getcarda = function(deck,number = 5){
+  hand = deck[1:min(number,length(deck))]
+  return(hand)
+}
+getcardb = function(deck,number = 5){
+  left = deck[-c(1:min(number,length(deck)))]
+  return(left)
+}
+
+#played_card = array()
+#action phase
+#action = function(hand){
+#  if(min(hand == -1)){
+#    played_card = -1
+#    hand = getcarda(deck, number=3)
+#    deck = getcardb(deck)
+#  }else{
+#    
+#  }
+#  return(played_card)
+#}
+
+
+#buy phase
+buy_waitforgold_smithy = function(hand,buy_smithy,all_cards){
+  if(sum(hand[which(hand >= 0)]) >= 8 && sum(unlist(all_cards == 3)) >= 4){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Smithy > 0 && buy_smithy ){
+    number_Smithy <<- number_Smithy -1
+    p = 0
+    buy_card = -1
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = numeric(0)
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+
+#end turn
+reshuffle = function(discard){
+  deck = sample(discard)
+  return(deck)
+}
+
+store = numeric(0)
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  deck = sample(deck)
+  discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  p = 3
+  
+  
+  while(number_Province>0){
+    i = i+1
+    all_cards = c(deck,discard)
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    #action stage
+    #print(hand)
+    #print(discard)
+    #print(deck)
+    #print(",")
+    if(min(hand) == -1){
+      played_card = -1
+      hand = hand[-which.min(hand)]
+      if(length(deck)>=3) {
+        hand = c(hand, getcarda(deck, number=3))
+        deck = getcardb(deck,number = 3)
+      }else{
+        hand1 = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand3 = getcarda(deck,number=3-length(hand1))
+        deck = getcardb(deck,number=3-length(hand1))
+        hand=c(hand,hand1,hand3)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck,discard,hand,played_card) == -1)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_smithy = (Smithy_total * 5) < cards_total
+    buy_card = buy_waitforgold_smithy(hand,buy_smithy,all_cards)
+    buy_card2= buy_card$buy_card
+    discard = c(discard,hand,buy_card2,played_card)
+  }
+  store <- c(store,i)
+}
+min_rounds = min(store)
+min_rounds
+
+hist(store, main = "the frequency of different rounds in 10000 times in 'wait for gold with smithy' strategy", xlab = "possible minimum rounds")
+plot(store,xlab = "frequency in 10000 times ", ylab = "possible rounds")
+```
+
+R2.4
+Greedy vs Greedy with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+      buy_card1 = buy_greedy(hand1)
+      p1 = buy_card1$points
+      buy_card1_1 =buy_card1$buy_card
+      discard1 = c(discard1,hand1,buy_card1_1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1=c(hand1,hand1_2)
+      buy_card1 = buy_greedy(hand1)
+      p1 = buy_card1$points
+      buy_card1_1 = buy_card1$buy_card
+      discard1 = c(hand1,buy_card1)
+    }
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      #action stage
+      
+      if(min(hand2) == -1){
+        played_card = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      Smithy_total = sum(c(deck2,discard2,hand2,played_card) == -1)
+      cards_total = length(c(deck2,discard2,hand2,played_card))
+      buy_smithy = (Smithy_total * 5) < cards_total
+      buy_card2 = buy_greedy_smithy(hand2,buy_smithy)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card)
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "greedy vs greedy with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+R2.5
+Greedy with smithy vs Greedy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1 = c(hand1,hand1_2)
+    }
+    #action stage
+    
+    if(min(hand1) == -1){
+      played_card = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1= reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck1,discard1,hand1,played_card) == -1)
+    cards_total = length(c(deck1,discard1,hand1,played_card))
+    buy_smithy1 = (Smithy_total * 5) < cards_total
+    buy_card1 = buy_greedy_smithy(hand1,buy_smithy1)
+    p1 = buy_card1$points
+    buy_card1_2= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_2,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+        buy_card2 = buy_greedy(hand2)
+        p2 = buy_card2$points
+        buy_card2_1 =buy_card2$buy_card
+        discard2 = c(discard2,hand2,buy_card2_1)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2=c(hand2,hand2_2)
+        buy_card2 = buy_greedy(hand2)
+        p2 = buy_card2$points
+        buy_card2_1 = buy_card2$buy_card
+        discard2 = c(hand2,buy_card2)
+      }
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total,v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "greedy with smithy vs greedy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.6
+big money with smithy vs big money
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1 = c(hand1,hand1_2)
+    }
+    #action stage
+    
+    if(min(hand1) == -1){
+      played_card = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1= reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck1,discard1,hand1,played_card) == -1)
+    cards_total = length(c(deck1,discard1,hand1,played_card))
+    buy_smithy1 = (Smithy_total * 5) < cards_total
+    buy_card1 = buy_bigmoney_smithy(hand1,buy_smithy1)
+    p1 = buy_card1$points
+    buy_card1_2= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_2,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+        buy_card2 = buy_greedy(hand2)
+        p2 = buy_card2$points
+        buy_card2_1 =buy_card2$buy_card
+        discard2 = c(discard2,hand2,buy_card2_1)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2=c(hand2,hand2_2)
+        buy_card2 = buy_bigmoney(hand2)
+        p2 = buy_card2$points
+        buy_card2_1 = buy_card2$buy_card
+        discard2 = c(hand2,buy_card2)
+      }
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total,v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "big money with smithy vs big money",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.7
+big money vs bigmoney with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+      buy_card1 = buy_greedy(hand1)
+      p1 = buy_card1$points
+      buy_card1_1 =buy_card1$buy_card
+      discard1 = c(discard1,hand1,buy_card1_1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1=c(hand1,hand1_2)
+      buy_card1 = buy_bigmoney(hand1)
+      p1 = buy_card1$points
+      buy_card1_1 = buy_card1$buy_card
+      discard1 = c(hand1,buy_card1)
+    }
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      #action stage
+      
+      if(min(hand2) == -1){
+        played_card = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      Smithy_total = sum(c(deck2,discard2,hand2,played_card) == -1)
+      cards_total = length(c(deck2,discard2,hand2,played_card))
+      buy_smithy = (Smithy_total * 5) < cards_total
+      buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card)
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "big money vs big money with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.8
+wait for gold vs wait for gold with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+      buy_card1 = buy_waitgold(hand1,all_cards)
+      p1 = buy_card1$points
+      buy_card1_1 =buy_card1$buy_card
+      discard1 = c(discard1,hand1,buy_card1_1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1=c(hand1,hand1_2)
+      buy_card1 = buy_waitgold(hand1,all_cards)
+      p1 = buy_card1$points
+      buy_card1_1 = buy_card1$buy_card
+      discard1 = c(hand1,buy_card1)
+    }
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      #action stage
+      #print(hand2)
+      #print(discard2)
+      #print(deck2)
+      #print(",")
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      #print(hand2)
+      #print(deck2)
+      #print("?")
+      #buy phase
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "wait for gold vs waitforgold with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.9
+waitfor gold with smithy vs wait for gold
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1 = c(hand1,hand1_2)
+    }
+    #action stage
+    
+    if(min(hand1) == -1){
+      played_card = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1= reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total = sum(c(deck1,discard1,hand1,played_card) == -1)
+    cards_total = length(c(deck1,discard1,hand1,played_card))
+    buy_smithy1 = (Smithy_total * 5) < cards_total
+    buy_card1 = buy_waitforgold_smithy(hand1,buy_smithy1,all_cards)
+    p1 = buy_card1$points
+    buy_card1_2= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_2,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+        buy_card2 = buy_waitgold(hand2,all_cards)
+        p2 = buy_card2$points
+        buy_card2_1 =buy_card2$buy_card
+        discard2 = c(discard2,hand2,buy_card2_1)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2=c(hand2,hand2_2)
+        buy_card2 = buy_waitgold(hand2,all_cards)
+        p2 = buy_card2$points
+        buy_card2_1 = buy_card2$buy_card
+        discard2 = c(hand2,buy_card2)
+      }
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total,v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "wait for gold with smithy vs wait for gold",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.10
+Wait-for-gold with smithy vs wait-for-gold with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_waitforgold_smithy(hand1,buy_smithy1,all_cards)
+    p1 = buy_card1$points
+    buy_card1_1= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with smithy vs Wait-for-gold with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.11
+greedy with smithy vs greedy with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_greedy_smithy(hand1,buy_smithy1)
+    p1 = buy_card1$points
+    buy_card1_1= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_greedy_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with smithy vs Greedy with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R2.12
+Big-money with smithy vs Big-money with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_bigmoney_smithy(hand1,buy_smithy1)
+    p1 = buy_card1$points
+    buy_card1_1= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with smithy vs Big-money with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+R2.13
+Big money with smithy vs Greedy with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 1000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_bigmoney_smithy(hand1,buy_smithy1)
+    buy_card1_1= buy_card1$buy_card
+    p1 = buy_card1$points
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_greedy_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "big money with smithy vs greedy with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+R2.14
+greedy with smithy vs bigmoney with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 1000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_greedy_smithy(hand1,buy_smithy1)
+    p1= buy_card1$points
+    buy_card1_1= buy_card1$buy_card
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with smithy vs Big-money with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+
+R2.15
+waitforgold with smithy vs greedy with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_waitforgold_smithy(hand1,buy_smithy1,all_cards)
+    buy_card1_1= buy_card1$buy_card
+    p1 = buy_card1$points
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_greedy_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "wait-for-gold with smithy vs greedy with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+
+R2.16
+Greedy with smithy vs Wait-for-gold with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_greedy_smithy(hand1,buy_smithy1)
+    buy_card1_1= buy_card1$buy_card
+    p1 = buy_card1$points
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with smithy vs Wait-for-gold with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+R2.17
+waitfor gold with smithy vs bigmoney with smihty
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_waitforgold_smithy(hand1,buy_smithy1,all_cards)
+    buy_card1_1= buy_card1$buy_card
+    p1 = buy_card1$points
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      #action stage
+      #print(hand2)
+      #print(discard2)
+      #print(deck2)
+      #print(",")
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      #print(hand2)
+      #print(deck2)
+      #print("?")
+      #buy phase
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "wait-for-gold with smithy vs big-money with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+
+```
+
+R2.18
+bigmoney with smithy vs waitforgold with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+      hand1 = getcarda(deck1)
+      deck1= getcardb(deck1)
+    }else{
+      hand1 = deck1
+      deck1 = reshuffle(discard1)
+      discard1 = numeric(0)
+      hand1_2 = getcarda(deck1,number=5-length(hand1))
+      deck1 = getcardb(deck1,number=5-length(hand1))
+      hand1= c(hand1,hand1_2)
+      
+    }
+    #action stage
+    if(min(hand1) == -1){
+      played_card1 = -1
+      hand1 = hand1[-which.min(hand1)]
+      if(length(deck1)>=3) {
+        hand1 = c(hand1, getcarda(deck1, number=3))
+        deck1 = getcardb(deck1,number = 3)
+      }else{
+        hand1_1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand3_1 = getcarda(deck1,number=3-length(hand1_1))
+        deck1 = getcardb(deck1,number=3-length(hand1_1))
+        hand1=c(hand1,hand1_1,hand3_1)
+      }
+    } else {
+      played_card1 = numeric(0)
+    } 
+    
+    #buy phase
+    Smithy_total1 = sum(c(deck1,discard1,hand1,played_card1) == -1)
+    cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+    buy_smithy1 = (Smithy_total1 * 5) < cards_total1
+    buy_card1 = buy_bigmoney_smithy(hand1,buy_smithy1)
+    buy_card1_1= buy_card1$buy_card
+    p1 = buy_card1$points
+    discard1 = c(discard1,hand1,buy_card1_1,played_card1)
+    
+    if(number_Province>0) {
+      all_cards = c(deck2,discard2)
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      #action stage
+      #print(hand2)
+      #print(discard2)
+      #print(deck2)
+      #print(",")
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      #print(hand2)
+      #print(deck2)
+      #print("?")
+      #buy phase
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "big money with smithy vs waitforgold with smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.1
+new action card: remodel
+```{r}
+#buy phase
+buy_greedy_remodel = function(hand,buy_remodel){
+  if(sum(hand[which(hand >= 0)]) >= 8){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Remodel > 0 && buy_remodel ){
+    number_Remodel <<- number_Remodel -1
+    p = 0
+    buy_card = -2
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = numeric(0)
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+buy_bigmoney_remodel = function(hand,buy_remodel){
+  if(sum(hand[which(hand >= 0)]) >= 8){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Remodel > 0 && buy_remodel ){
+    number_Remodel <<- number_Remodel -1
+    p = 0
+    buy_card = -2
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = 1
+    number_Copper <<- number_Copper - 1
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+
+
+buy_waitforgold_remodel = function(hand,buy_remodel,all_cards){
+  if(sum(hand[which(hand >= 0)]) >= 8 & sum(unlist(all_cards == 3)) >= 4){
+    buy_card = 0
+    number_Province <<- number_Province - 1
+    p = 6
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 6 && number_Gold > 0 ){
+    buy_card = 3
+    number_Gold <<- number_Gold - 1
+    p = 0
+    #played_card = numeric(0)
+  }else if(sum(hand[which(hand >= 0)]) >= 4 && number_Remodel > 0 && buy_remodel ){
+    number_Remodel <<- number_Remodel -1
+    p = 0
+    buy_card = -2
+  }else if(sum(hand[which(hand >= 0)]) >= 3 && number_Silver > 0){
+    buy_card = 2
+    number_Silver <<- number_Silver - 1
+    p = 0
+    #played_card = numeric(0)
+  }else{
+    buy_card = numeric(0)
+    p = 0
+    #played_card = numeric(0)
+  }
+  
+  return(list(buy_card=buy_card, points=p))
+}
+
+#end turn
+reshuffle = function(discard){
+  deck = sample(discard)
+  return(deck)
+}
+
+store = numeric(0)
+for (runtimes in 1: 1000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  
+  number_Remodel = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  deck = sample(deck)
+  discard = numeric(0)
+  played_card = numeric(0)
+  hand=numeric(0)
+  i = 0
+  p = 3
+  
+  
+  while(number_Province>0){
+    i = i+1
+    
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    if(min(hand) == -2){
+      played_card = -2
+      hand = hand[-which.min(hand)]
+      all_cards = c(hand, deck, discard, played_card)
+      if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+        hand = hand[-which.max(hand ==3)]
+        discard = c(discard, 3)
+        number_Province <<- number_Province-1
+      }
+    }else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_remodel = (remodel_total * 10) < cards_total
+    buy_card = buy_greedy_remodel(hand,buy_remodel)
+    buy_card2= buy_card$buy_card
+    discard = c(discard,hand,buy_card2,played_card)
+  }
+  store <- c(store,i)
+}
+min_rounds = min(store)
+min_rounds
+
+hist(store, main = "the frequency of different rounds in 10000 times in 'greedy with remodel' strategy", xlab = "possible minimum rounds")
+plot(store,xlab = "frequency in 10000 times ", ylab = "possible rounds")
+```
+
+
+
+R3.2
+greedy with remodel vs Greedy with smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  #deck = sample(deck)
+  #discard = numeric(0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    if(min(hand) == -2){
+      played_card = -2
+      hand = hand[-which.min(hand)]
+      all_cards = c(hand, deck, discard, played_card)
+      if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+        hand = hand[-which.max(hand ==3)]
+        discard = c(discard, 3)
+        number_Province <<- number_Province-1
+      }
+    }else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_remodel = (remodel_total * 10) < cards_total
+    buy_card = buy_greedy_remodel(hand,buy_remodel)
+    p1 = buy_card$points
+    buy_card1= buy_card$buy_card
+    discard = c(discard,hand,buy_card1,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_greedy_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with Remodel vs Greedy with Smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.3
+greedy with Smithy vs Greedy with Remodel
+```{r}
+#greedy with Smithy vs Greedy with Remodel
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck2)>=5){
+      hand2 = getcarda(deck2)
+      deck2= getcardb(deck2)
+    }else{
+      hand2 = deck2
+      deck2 = reshuffle(discard2)
+      discard2 = numeric(0)
+      hand2_2 = getcarda(deck2,number=5-length(hand2))
+      deck2 = getcardb(deck2,number=5-length(hand2))
+      hand2 = c(hand2,hand2_2)
+      
+    }
+    if(min(hand2) == -1){
+      played_card2 = -1
+      hand2 = hand2[-which.min(hand2)]
+      if(length(deck2)>=3) {
+        hand2 = c(hand2, getcarda(deck2, number=3))
+        deck2 = getcardb(deck2,number = 3)
+      }else{
+        hand1_2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+        deck2 = getcardb(deck2,number=3-length(hand1_2))
+        hand2=c(hand2,hand1_2,hand3_2)
+      }
+    } else {
+      played_card2 = numeric(0)
+    } 
+    Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+    cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+    buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+    buy_card2 = buy_greedy_smithy(hand2,buy_smithy2)
+    p1 = buy_card2$points
+    buy_card2_2= buy_card2$buy_card
+    discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+    if(number_Province>0) {
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_greedy_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+sum(which((unlist(v1_total)-unlist(v2_total)>=0)))/sum(which((unlist(v1_total)-unlist(v2_total)<=0)))
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with Smithy vs Greedy with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.4
+Big-money with Smithy vs Big-money with Remodel
+```{r}
+#greedy with Smithy vs Greedy with Remodel
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck2)>=5){
+      hand2 = getcarda(deck2)
+      deck2= getcardb(deck2)
+    }else{
+      hand2 = deck2
+      deck2 = reshuffle(discard2)
+      discard2 = numeric(0)
+      hand2_2 = getcarda(deck2,number=5-length(hand2))
+      deck2 = getcardb(deck2,number=5-length(hand2))
+      hand2 = c(hand2,hand2_2)
+      
+    }
+    if(min(hand2) == -1){
+      played_card2 = -1
+      hand2 = hand2[-which.min(hand2)]
+      if(length(deck2)>=3) {
+        hand2 = c(hand2, getcarda(deck2, number=3))
+        deck2 = getcardb(deck2,number = 3)
+      }else{
+        hand1_2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+        deck2 = getcardb(deck2,number=3-length(hand1_2))
+        hand2=c(hand2,hand1_2,hand3_2)
+      }
+    } else {
+      played_card2 = numeric(0)
+    } 
+    Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+    cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+    buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+    buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy2)
+    p1 = buy_card2$points
+    buy_card2_2= buy_card2$buy_card
+    discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+    
+    if(number_Province>0) {
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+sum(which((unlist(v1_total)-unlist(v2_total)>=0)))/sum(which((unlist(v1_total)-unlist(v2_total)<=0)))
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with Smithy vs Bigmoney with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.5
+Big-money with Remodel vs Big-money with Smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    if(min(hand) == -2){
+      played_card = -2
+      hand = hand[-which.min(hand)]
+      all_cards = c(hand, deck, discard, played_card)
+      if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+        hand = hand[-which.max(hand ==3)]
+        discard = c(discard, 3)
+        number_Province <<- number_Province-1
+      }
+    }else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_remodel = (remodel_total * 10) < cards_total
+    buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+    p1 = buy_card$points
+    buy_card1= buy_card$buy_card
+    discard = c(discard,hand,buy_card1,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_bigmoney_smithy(hand2,buy_smithy2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with Remodel vs Big-money with Smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.6
+Wait-for-gold with Remodel vs Wait-for-gold with Smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    all_cards1 = c(deck,discard)
+    if(length(deck)>=5){
+      hand = getcarda(deck)
+      deck= getcardb(deck)
+    }else{
+      hand = deck
+      deck = reshuffle(discard)
+      discard = numeric(0)
+      hand2 = getcarda(deck,number=5-length(hand))
+      deck = getcardb(deck,number=5-length(hand))
+      hand= c(hand,hand2)
+      
+    }
+    if(min(hand) == -2){
+      played_card = -2
+      hand = hand[-which.min(hand)]
+      all_cards = c(hand, deck, discard, played_card)
+      if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+        hand = hand[-which.max(hand ==3)]
+        discard = c(discard, 3)
+        number_Province <<- number_Province-1
+      }
+    }else {
+      played_card = numeric(0)
+    } 
+    
+    #buy phase
+    remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+    cards_total = length(c(deck,discard,hand,played_card))
+    buy_remodel = (remodel_total * 10) < cards_total
+    buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards1)
+    p1 = buy_card$points
+    buy_card1= buy_card$buy_card
+    discard = c(discard,hand,buy_card1,played_card)
+    
+    if(number_Province>0) {
+      all_cards2 = c(deck2,discard2)
+      if(length(deck2)>=5){
+        hand2 = getcarda(deck2)
+        deck2= getcardb(deck2)
+      }else{
+        hand2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand2_2 = getcarda(deck2,number=5-length(hand2))
+        deck2 = getcardb(deck2,number=5-length(hand2))
+        hand2 = c(hand2,hand2_2)
+        
+      }
+      if(min(hand2) == -1){
+        played_card2 = -1
+        hand2 = hand2[-which.min(hand2)]
+        if(length(deck2)>=3) {
+          hand2 = c(hand2, getcarda(deck2, number=3))
+          deck2 = getcardb(deck2,number = 3)
+        }else{
+          hand1_2 = deck2
+          deck2 = reshuffle(discard2)
+          discard2 = numeric(0)
+          hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+          deck2 = getcardb(deck2,number=3-length(hand1_2))
+          hand2=c(hand2,hand1_2,hand3_2)
+        }
+      } else {
+        played_card2 = numeric(0)
+      } 
+      Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+      cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+      buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+      buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards2)
+      p2 = buy_card2$points
+      buy_card2_2= buy_card2$buy_card
+      discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+      
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with Remodel vs Wait-for-gold with Smithy",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.7
+Wait-for-gold with Smithy vs Wait-for-gold with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    all_cards2 = c(deck2,discard2)
+    if(length(deck2)>=5){
+      hand2 = getcarda(deck2)
+      deck2= getcardb(deck2)
+    }else{
+      hand2 = deck2
+      deck2 = reshuffle(discard2)
+      discard2 = numeric(0)
+      hand2_2 = getcarda(deck2,number=5-length(hand2))
+      deck2 = getcardb(deck2,number=5-length(hand2))
+      hand2 = c(hand2,hand2_2)
+      
+    }
+    if(min(hand2) == -1){
+      played_card2 = -1
+      hand2 = hand2[-which.min(hand2)]
+      if(length(deck2)>=3) {
+        hand2 = c(hand2, getcarda(deck2, number=3))
+        deck2 = getcardb(deck2,number = 3)
+      }else{
+        hand1_2 = deck2
+        deck2 = reshuffle(discard2)
+        discard2 = numeric(0)
+        hand3_2 = getcarda(deck2,number=3-length(hand1_2))
+        deck2 = getcardb(deck2,number=3-length(hand1_2))
+        hand2=c(hand2,hand1_2,hand3_2)
+      }
+    } else {
+      played_card2 = numeric(0)
+    } 
+    Smithy_total2 = sum(c(deck2,discard2,hand2,played_card2) == -1)
+    cards_total2 = length(c(deck2,discard2,hand2,played_card2))
+    buy_smithy2 = (Smithy_total2 * 5) < cards_total2
+    buy_card2 = buy_waitforgold_smithy(hand2,buy_smithy2,all_cards2)
+    p1 = buy_card2$points
+    buy_card2_2= buy_card2$buy_card
+    discard2 = c(discard2,hand2,buy_card2_2,played_card2)
+    if(number_Province>0) {
+      all_cards1 = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards1)
+      p2 = buy_card$points
+      buy_card1= buy_card$buy_card
+      discard = c(discard,hand,buy_card1,played_card)
+      
+      
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with Smithy vs Wait-for-gold with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+
+
+R3.8
+Big-money with Remodel vs Greedy with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_greedy_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with Remodel vs Greedy with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.9
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_greedy_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    if(number_Province>0) {
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with Remodel vs Bigmoney with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.10
+Big-money with Remodel vs Wait-for-gold with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand1,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard1 = c(discard1,hand1,buy_card2,played_card1)
+    
+    if(number_Province>0) {
+      all_cards = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with Remodel vs Wait-for-gold with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.11
+Wait-for-gold with Remodel vs Big-money with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    all_cards = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards1 = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    
+    if(number_Province>0) {
+      if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand1,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard1 = c(discard1,hand1,buy_card2,played_card1)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with Remodel vs Big-money with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.12
+Greedy with Remodel vs Wait-for-gold with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_greedy_remodel(hand1,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard1 = c(discard1,hand1,buy_card2,played_card1)
+    
+    if(number_Province>0) {
+      all_cards = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards)
+      buy_card2= buy_card$buy_card
+      p2 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+      #print(discard2)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with Remodel vs Wait-for-gold with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.13
+Wait-for-gold with Smithy vs Greedy with Smithy
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    all_cards = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_waitforgold_remodel(hand,buy_remodel,all_cards)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    
+    if(number_Province>0) {
+      if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard1 = c(discard1, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total1 = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel1 = (remodel_total1 * 10) < cards_total1
+      buy_card1 = buy_greedy_remodel(hand1,buy_remodel)
+      buy_card2_1= buy_card1$buy_card
+      p2 = buy_card1$points
+      discard1 = c(discard1,hand1,buy_card2_1,played_card1)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with Remodel vs Greedy with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+R3.14
+Greedy with Remodel vs Greedy with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_greedy_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    
+    if(number_Province>0) {
+      if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand1)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard1 = c(discard1, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total1 = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel1 = (remodel_total * 10) < cards_total
+      buy_card1 = buy_greedy_remodel(hand1,buy_remodel)
+      buy_card2_1= buy_card1$buy_card
+      p2 = buy_card1$points
+      discard1 = c(discard1,hand1,buy_card2_1,played_card1)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Greedy with Remodel vs Greedy with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+R3.15
+Big-money with Remodel vs Big-money with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    
+    if(number_Province>0) {
+      if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards1 = c(hand1, deck1, discard1, played_card1)
+        if(length(hand1)>=1 && sum(hand == 3) >= 1 && sum(all_cards1 == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard1 = c(discard1, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total1 = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel1 = (remodel_total * 10) < cards_total
+      buy_card1 = buy_bigmoney_remodel(hand1,buy_remodel)
+      buy_card2_1= buy_card1$buy_card
+      p2 = buy_card1$points
+      discard1 = c(discard1,hand1,buy_card2_1,played_card1)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Big-money with Remodel vs Big-money with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
+
+
+R3.16
+Wait-for-gold with Remodel vs Wait-for-gold with Remodel
+```{r}
+runtimes = 0
+vi = numeric(0)
+v1 = numeric(0)
+v2 = numeric(0)
+
+v1_total = list()
+v2_total = list()
+
+for (runtimes in 1: 10000) {
+  number_Copper = 60
+  number_Silver = 40
+  number_Gold = 20
+  
+  number_Estate = 8
+  number_Duchy = 8
+  number_Province = 8
+  number_Remodel = 10
+  number_Smithy = 10
+  deck = c(1,1,1,1,1,1,1,0,0,0)
+  played_card1 = numeric(0)
+  played_card2 = numeric(0)
+  i = 0
+  
+  deck1 = sample(deck)
+  discard1 = numeric(0)
+  deck2 = sample(deck)
+  discard2 = numeric(0)
+  deck = sample(deck)
+  v1 = 0
+  v2 = 0
+  
+  p1 = 3
+  p2 = 3
+  while(number_Province>0){
+    i = i+1
+    v1 = v1+p1
+    v2 = v2+p2
+    #dealing hand
+    all_cards = c(deck,discard)
+      if(length(deck)>=5){
+        hand = getcarda(deck)
+        deck= getcardb(deck)
+      }else{
+        hand = deck
+        deck = reshuffle(discard)
+        discard = numeric(0)
+        hand2 = getcarda(deck,number=5-length(hand))
+        deck = getcardb(deck,number=5-length(hand))
+        hand= c(hand,hand2)
+        
+      }
+      if(min(hand) == -2){
+        played_card = -2
+        hand = hand[-which.min(hand)]
+        all_cards_a = c(hand, deck, discard, played_card)
+        if(length(hand)>=1 && sum(hand == 3) >= 1 && sum(all_cards_a == 3) >= 4) { 
+          hand = hand[-which.max(hand ==3)]
+          discard = c(discard, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total = sum(c(deck,discard,hand,played_card) == -2)
+      cards_total = length(c(deck,discard,hand,played_card))
+      buy_remodel = (remodel_total * 10) < cards_total
+      buy_card = buy_bigmoney_remodel(hand,buy_remodel)
+      buy_card2= buy_card$buy_card
+      p1 = buy_card$points
+      discard = c(discard,hand,buy_card2,played_card)
+    
+    
+    if(number_Province>0) {
+       all_cards1 = c(deck1,discard1)
+      if(length(deck1)>=5){
+        hand1 = getcarda(deck1)
+        deck1= getcardb(deck1)
+      }else{
+        hand1 = deck1
+        deck1 = reshuffle(discard1)
+        discard1 = numeric(0)
+        hand2_1 = getcarda(deck1,number=5-length(hand1))
+        deck1 = getcardb(deck1,number=5-length(hand1))
+        hand1= c(hand,hand2_1)
+        
+      }
+      if(min(hand1) == -2){
+        played_card1 = -2
+        hand1 = hand1[-which.min(hand1)]
+        all_cards_b = c(hand1, deck1, discard1, played_card1)
+        if(length(hand1)>=1 && sum(hand == 3) >= 1 && sum(all_cards_b == 3) >= 4) { 
+          hand1 = hand1[-which.max(hand1 ==3)]
+          discard1 = c(discard1, 3)
+          number_Province <<- number_Province-1
+        }
+      }else {
+        played_card1 = numeric(0)
+      } 
+      
+      #buy phase
+      remodel_total1 = sum(c(deck1,discard1,hand1,played_card1) == -2)
+      cards_total1 = length(c(deck1,discard1,hand1,played_card1))
+      buy_remodel1 = (remodel_total * 10) < cards_total
+      buy_card1 = buy_waitforgold_remodel(hand1,buy_remodel,all_cards1)
+      buy_card2_1= buy_card1$buy_card
+      p2 = buy_card1$points
+      discard1 = c(discard1,hand1,buy_card2_1,played_card1)
+    }
+  }
+  v1_total = append(v1,v1_total)
+  v2_total = append(v2_total, v2)
+  vi = c(vi,i)
+}
+#min_rounds = min(store)
+#min_rounds
+
+hist((unlist(v1_total)-unlist(v2_total)), main = "Wait-for-gold with Remodel vs Wait-for-gold with Remodel",xlab = "difference in medals")
+plot((unlist(v1_total)-unlist(v2_total)), ylab = "how many medals player 1 wins out player2")
+```
